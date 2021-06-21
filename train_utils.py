@@ -9,8 +9,6 @@ from dataset import ShopeeDataset
 from augmentations import get_train_transforms, get_valid_transforms
 
 
-
-
 def run():
     train, valid = train_test_split(data, test_size=0.05, random_state=42)
     train = train.reset_index(drop=True)
