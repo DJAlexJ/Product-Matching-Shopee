@@ -5,11 +5,13 @@ import torch
 import torch.nn as nn
 from sklearn.model_selection import train_test_split
 
+import utils
 from dataset import ShopeeDataset
 from augmentations import get_train_transforms, get_valid_transforms
+from config import CFG
 
 
-def run():
+def run(data):
     train, valid = train_test_split(data, test_size=0.05, random_state=42)
     train = train.reset_index(drop=True)
     valid = valid.reset_index(drop=True)
@@ -42,12 +44,10 @@ def run():
         pin_memory=True,
         drop_last=False,
     )
-    
-    # Defining Device
-    device = torch.device("cuda")
+
     # Defining Model for specific fold
-    model = ShopeeNet(**model_params)
-    model.to(device)
+    model = ShopeeNet(**CFG.model_params)
+    model.to(CFG.device)
     parallel_model = torch.nn.DataParallel(model)
     
 #     for name, param in model.named_parameters():
@@ -56,8 +56,8 @@ def run():
     
     
     # Defining criterion
-    criterion = fetch_loss()
-    criterion.to(device)
+    criterion = utils.fetch_loss()
+    criterion.to(CFG.device)
         
     # Defining Optimizer with weight decay to params other than bias and layer norms
     param_optimizer = list(parallel_model.named_parameters())
@@ -69,23 +69,34 @@ def run():
     
     optimizer = torch.optim.Adam(optimizer_parameters, lr=LR)
     # Defining LR Scheduler
-    scheduler = fetch_scheduler(optimizer)
+    scheduler = utils.fetch_scheduler(optimizer)
         
     # THE ENGINE LOOP
     best_loss = 10000
     for epoch in range(EPOCHS):
-        train_loss = train_fn(train_loader, parallel_model, criterion, optimizer, device,scheduler=scheduler,epoch=epoch)
+        _ = train_fn(
+            train_loader, parallel_model,
+            criterion, optimizer,
+            scheduler=scheduler,
+            epoch=epoch
+        )
         
-        valid_loss = eval_fn(valid_loader, parallel_model, criterion,device,scheduler=scheduler)
+        valid_loss = eval_fn(
+            valid_loader,
+            parallel_model,
+            criterion,
+            scheduler=scheduler
+        )
+
         if valid_loss.avg < best_loss:
             best_loss = valid_loss.avg
             torch.save(parallel_model.module.state_dict(), f'{model_name}_{loss_module}_{best_loss:.3f}.bin')
             print('best model found for epoch {}'.format(epoch))
 
 
-def train_fn(dataloader, model, criterion, optimizer, device, scheduler, epoch):
+def train_fn(dataloader, model, criterion, optimizer, scheduler, epoch):
     model.train()
-    loss_score = AverageMeter()
+    loss_score = utils.AverageMeter()
 
     tk0 = tqdm(enumerate(dataloader), total=len(dataloader))
     for bi, d in tk0:
@@ -94,8 +105,8 @@ def train_fn(dataloader, model, criterion, optimizer, device, scheduler, epoch):
         images = d[0]
         targets = d[1]
 
-        images = images.to(device)
-        targets = targets.to(device)
+        images = images.to(CFG.device)
+        targets = targets.to(CFG.device)
 
         optimizer.zero_grad()
 
@@ -115,8 +126,8 @@ def train_fn(dataloader, model, criterion, optimizer, device, scheduler, epoch):
     return loss_score
 
 
-def eval_fn(data_loader, model, criterion, device, scheduler):
-    loss_score = AverageMeter()
+def eval_fn(data_loader, model, criterion, scheduler):
+    loss_score = utils.AverageMeter()
     model.eval()
 
     tk0 = tqdm(enumerate(data_loader), total=len(data_loader))
@@ -128,8 +139,8 @@ def eval_fn(data_loader, model, criterion, device, scheduler):
             image = d[0]
             targets = d[1]
 
-            image = image.to(device)
-            targets = targets.to(device)
+            image = image.to(CFG.device)
+            targets = targets.to(CFG.device)
 
             output = model(image, targets)
 
