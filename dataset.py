@@ -3,6 +3,31 @@ from torch.utils.data import Dataset
 import cv2
 
 
+class TextDataset(torch.utils.data.Dataset):
+    def __init__(self, dataframe, tokenizer, mode="train", max_length=None):
+        self.dataframe = dataframe
+        if mode != "test":
+            self.targets = dataframe['label_code'].values
+        texts = list(dataframe['title'].apply(lambda o: str(o)).values)
+        self.encodings = tokenizer(texts,
+                                   padding=True,
+                                   truncation=True,
+                                   max_length=max_length)
+        self.mode = mode
+
+    def __len__(self):
+        return len(self.dataframe)
+
+    def __getitem__(self, idx):
+        # putting each tensor in front of the corresponding key from the tokenizer
+        # HuggingFace tokenizers give you whatever you need to feed to the corresponding model
+        item = {key: torch.tensor(values[idx]) for key, values in self.encodings.items()}
+        # when testing, there are no targets so we won't do the following
+        if self.mode != "test":
+            item['labels'] = torch.tensor(self.targets[idx]).long()
+        return item
+
+
 class ShopeeDataset(Dataset):
     def __init__(self, csv, transforms=None):
         self.csv = csv.reset_index()

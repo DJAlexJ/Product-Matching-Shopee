@@ -3,6 +3,31 @@ import torch.nn as nn
 import timm
 
 
+class BertModel(nn.Module):
+    def __init__(self,
+                 bert_model,
+                 num_classes=NUM_CLASSES,
+                 last_hidden_size=CFG.bert_hidden_size):
+        super().__init__()
+        self.bert_model = bert_model
+        self.arc_margin = ArcMarginProduct(last_hidden_size,
+                                           num_classes,
+                                           s=30.0,
+                                           m=0.50,
+                                           easy_margin=False)
+
+    def get_bert_features(self, batch):
+        output = self.bert_model(input_ids=batch['input_ids'], attention_mask=batch['attention_mask'])
+        last_hidden_state = output.last_hidden_state  # shape: (batch_size, seq_length, bert_hidden_dim)
+        CLS_token_state = last_hidden_state[:, 0, :]  # obtaining CLS token state which is the first token.
+        return CLS_token_state
+
+    def forward(self, batch):
+        CLS_hidden_state = self.get_bert_features(batch)
+        output = self.arc_margin(CLS_hidden_state, batch['labels'])
+        return output
+
+
 class ShopeeNet(nn.Module):
     def __init__(self,
                  n_classes,
@@ -14,7 +39,6 @@ class ShopeeNet(nn.Module):
                  s=30.0,
                  margin=0.50,
                  ls_eps=0.0,
-                 theta_zero=0.785,
                  pretrained=True):
 
         super(ShopeeNet, self).__init__()
@@ -77,12 +101,8 @@ class ShopeeNet(nn.Module):
     def extract_feat(self, x):
         batch_size = x.shape[0]
         x = self.backbone(x)
-        #         x = self.bn1(x)
-
-        #         gem_x = self.gem_pooling(x).view(batch_size, -1)
-        #         rmac_x = self.rmac_pooling(x).view(batch_size, -1)
-        #         x = torch.cat([rmac_x, gem_x], axis=1)
-        #         x = self.pooling(x).view(batch_size, -1)
+        x = self.bn1(x)
+        x = self.pooling(x).view(batch_size, -1)
         if self.use_fc:
             x = self.dropout(x)
             x = self.fc(x)
