@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 
 import torch
 import torch.nn as nn
@@ -9,6 +10,7 @@ import utils
 from dataset import ShopeeDataset
 from augmentations import get_train_transforms, get_valid_transforms
 from config import CFG
+from models import ShopeeNet
 
 
 def run(data):
@@ -29,17 +31,17 @@ def run(data):
         
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
-        batch_size=TRAIN_BATCH_SIZE,
+        batch_size=CFG.train_batch_size,
         shuffle=True,
         pin_memory=True,
         drop_last=True,
-        num_workers=NUM_WORKERS
+        num_workers=CFG.num_workers
     )
     
     valid_loader = torch.utils.data.DataLoader(
         valid_dataset,
-        batch_size=VALID_BATCH_SIZE,
-        num_workers=NUM_WORKERS,
+        batch_size=CFG.valid_batch_size,
+        num_workers=CFG.num_workers,
         shuffle=False,
         pin_memory=True,
         drop_last=False,
@@ -67,13 +69,13 @@ def run(data):
         {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0},
             ]  
     
-    optimizer = torch.optim.Adam(optimizer_parameters, lr=LR)
+    optimizer = torch.optim.Adam(optimizer_parameters, lr=CFG.lr)
     # Defining LR Scheduler
     scheduler = utils.fetch_scheduler(optimizer)
         
     # THE ENGINE LOOP
     best_loss = 10000
-    for epoch in range(EPOCHS):
+    for epoch in range(CFG.epochs):
         _ = train_fn(
             train_loader, parallel_model,
             criterion, optimizer,
@@ -90,7 +92,7 @@ def run(data):
 
         if valid_loss.avg < best_loss:
             best_loss = valid_loss.avg
-            torch.save(parallel_model.module.state_dict(), f'{model_name}_{loss_module}_{best_loss:.3f}.bin')
+            torch.save(parallel_model.module.state_dict(), f'{CFG.model_name}_{CFG.loss_module}_{best_loss:.3f}.bin')
             print('best model found for epoch {}'.format(epoch))
 
 

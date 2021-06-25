@@ -1,12 +1,18 @@
+import torch
+
+
 class CFG:
+    dataset_path = "../Shopee_Kaggle/folds.csv"
+    image_folder = "../Shopee_Kaggle/train_images"
+    
     DIM = (224, 224)
 
-    NUM_WORKERS = 16
-    TRAIN_BATCH_SIZE = 4
-    VALID_BATCH_SIZE = 4
-    EPOCHS = 100
-    SEED = 2020
-    LR = 1e-3
+    num_workers = 16
+    train_batch_size = 4
+    valid_batch_size = 4
+    epochs = 100
+    seed = 2020
+    lr = 1e-3
 
     device = torch.device('cuda')
 
@@ -42,7 +48,6 @@ class CFG:
         's': 30.0,
         'margin': 0.50,
         'ls_eps': 0.0,
-        'theta_zero': 0.785,
         'pretrained': True
     }
 

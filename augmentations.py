@@ -1,3 +1,5 @@
+import albumentations
+from albumentations.pytorch.transforms import ToTensorV2
 from albumentations import (
     HorizontalFlip, IAAPerspective, ShiftScaleRotate, CLAHE, RandomRotate90,
     Transpose, ShiftScaleRotate, Blur, OpticalDistortion, GridDistortion, HueSaturationValue,
@@ -5,11 +7,12 @@ from albumentations import (
     IAASharpen, IAAEmboss, RandomContrast, RandomBrightness, Flip, OneOf, Compose, RandomGamma,
     ElasticTransform, ChannelShuffle, RGBShift, Rotate
 )
+from config import CFG
 
 
 def get_train_transforms():
     return Compose([
-        albumentations.Resize(DIM[0], DIM[1], always_apply=True),
+        albumentations.Resize(CFG.DIM[0], CFG.DIM[1], always_apply=True),
         RandomRotate90(),
         Flip(),
         Transpose(),
@@ -45,7 +48,7 @@ def get_valid_transforms():
 
     return albumentations.Compose(
         [
-            albumentations.Resize(DIM[0], DIM[1], always_apply=True),
+            albumentations.Resize(CFG.DIM[0], CFG.DIM[1], always_apply=True),
             albumentations.Normalize(),
             ToTensorV2(p=1.0)
         ]

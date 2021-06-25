@@ -1,13 +1,17 @@
 import torch
 import torch.nn as nn
+from torch.nn import Parameter
+from torch.nn import functional as F
 import timm
-
+import math
+from config import CFG
 
 class BertModel(nn.Module):
     def __init__(self,
                  bert_model,
-                 num_classes=NUM_CLASSES,
-                 last_hidden_size=CFG.bert_hidden_size):
+                 num_classes,
+                 last_hidden_size
+                 ):
         super().__init__()
         self.bert_model = bert_model
         self.arc_margin = ArcMarginProduct(last_hidden_size,
